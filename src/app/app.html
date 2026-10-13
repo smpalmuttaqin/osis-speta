@@ -1,0 +1,38 @@
+@if (!authService.currentUser()) {
+  <app-login />
+} @else {
+  <!-- Floating Hamburger Menu Button for Admin when Sidebar is Closed -->
+  @if (authService.currentUser() === 'admin' && !uiService.isSidebarOpen()) {
+    <button 
+      type="button"
+      (click)="uiService.toggleSidebar()"
+      class="fixed top-6 left-6 z-40 p-3 bg-white text-slate-700 hover:text-[#0062FF] rounded-2xl shadow-xl border border-slate-200 transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95"
+      title="Buka Menu Sidebar">
+      <mat-icon class="text-[22px] w-5.5 h-5.5">menu</mat-icon>
+    </button>
+  }
+
+  <div class="min-h-screen bg-[#ebf2f7] p-2 sm:p-3 md:p-5 lg:p-6 flex flex-col justify-center items-center">
+    <!-- Rounded Dashboard Shell Canvas -->
+    <div class="w-full max-w-[1580px] min-h-[94vh] bg-[#f8fafc] rounded-2xl md:rounded-[32px] shadow-[0_24px_70px_-12px_rgba(20,40,80,0.08)] border border-white/90 overflow-hidden flex flex-col md:flex-row relative">
+      
+      <!-- Clean Minimal Sidebar (Hanya untuk Admin) -->
+      @if (authService.currentUser() === 'admin') {
+        <app-sidebar />
+      }
+
+      <!-- Main Viewport Area -->
+      <div 
+        class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out bg-[#f8fafc]"
+        [class.md:pl-64]="authService.currentUser() === 'admin' && uiService.isSidebarOpen()"
+        [class.md:pl-0]="authService.currentUser() !== 'admin' || !uiService.isSidebarOpen()">
+        
+        <!-- Main Content Outlet Area -->
+        <main class="flex-1 overflow-y-auto">
+          <router-outlet />
+        </main>
+      </div>
+
+    </div>
+  </div>
+}
