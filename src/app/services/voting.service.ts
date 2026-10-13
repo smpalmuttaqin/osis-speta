@@ -198,54 +198,83 @@ export class VotingService {
     return Math.round((this.belumMemilihCount() / total) * 100);
   });
 
-  readonly hasilKandidat = computed<KandidatHasilSuara[]>(() => {
-    const kandidatList = this._kandidat();
-    const siswaList = this._siswa();
+  readonly hasilPaslonSiswa = computed<KandidatHasilSuara[]>(() => {
+    const list = this._kandidat().filter(k => k.jenisKandidat !== 'wakil_siswi');
     const logs = this._suaraLog();
+    const siswaList = this._siswa();
 
-    const paslonLogs = logs.filter(l => {
-      const kand = kandidatList.find(x => x.id === l.kandidatId);
-      return !kand || kand.jenisKandidat !== 'wakil_siswi';
-    });
-    const wakilLogs = logs.filter(l => {
-      const kand = kandidatList.find(x => x.id === l.kandidatId);
-      return kand?.jenisKandidat === 'wakil_siswi';
-    });
-
-    const totalPemilihPaslon = paslonLogs.length > 0 
-      ? paslonLogs.length 
-      : siswaList.filter(s => s.sudahMemilih && s.kandidatDipilihId).length;
-
-    const totalPemilihWakil = wakilLogs.length > 0 
-      ? wakilLogs.length 
-      : siswaList.filter(s => s.kandidatWakilDipilihId).length;
-
-    return kandidatList
+    const sortedList = list
       .slice()
-      .sort((a, b) => {
-        if (a.jenisKandidat !== b.jenisKandidat) {
-          return a.jenisKandidat === 'paslon' ? -1 : 1;
-        }
-        return (a.nomorUrut || 999) - (b.nomorUrut || 999);
-      })
-      .map(k => {
-        const isWakil = k.jenisKandidat === 'wakil_siswi';
-        const jumlahSuara = logs.length > 0
-          ? logs.filter(l => l.kandidatId === k.id).length
-          : (isWakil 
-              ? siswaList.filter(s => s.kandidatWakilDipilihId === k.id).length
-              : siswaList.filter(s => s.kandidatDipilihId === k.id).length);
+      .sort((a, b) => (a.nomorUrut || 999) - (b.nomorUrut || 999));
 
-        const basis = isWakil ? totalPemilihWakil : totalPemilihPaslon;
-        const persentase = basis > 0 ? Math.round((jumlahSuara / basis) * 100) : 0;
+    const itemVotes = sortedList.map(k => {
+      const fromLogs = logs.filter(l => l.kandidatId === k.id).length;
+      const fromSiswa = siswaList.filter(s => s.kandidatDipilihId === k.id).length;
+      const jumlahSuara = Math.max(fromLogs, fromSiswa);
+      return { k, jumlahSuara };
+    });
 
-        return {
-          kandidat: k,
-          jumlahSuara,
-          persentase
-        };
-      });
+    const totalBasis = itemVotes.reduce((acc, curr) => acc + curr.jumlahSuara, 0);
+
+    return itemVotes.map(({ k, jumlahSuara }) => {
+      const persentase = totalBasis > 0 ? Math.round((jumlahSuara / totalBasis) * 100) : 0;
+      return {
+        kandidat: k,
+        jumlahSuara,
+        persentase
+      };
+    });
   });
+
+  readonly totalSuaraPaslon = computed<number>(() => {
+    return this.hasilPaslonSiswa().reduce((sum, item) => sum + item.jumlahSuara, 0);
+  });
+
+  readonly hasilWakilSiswi = computed<KandidatHasilSuara[]>(() => {
+    const list = this._kandidat().filter(k => k.jenisKandidat === 'wakil_siswi');
+    const logs = this._suaraLog();
+    const siswaList = this._siswa();
+
+    const sortedList = list
+      .slice()
+      .sort((a, b) => (a.nomorUrut || 999) - (b.nomorUrut || 999));
+
+    const itemVotes = sortedList.map(k => {
+      const fromLogs = logs.filter(l => l.kandidatId === k.id).length;
+      const fromSiswa = siswaList.filter(s => s.kandidatWakilDipilihId === k.id).length;
+      const jumlahSuara = Math.max(fromLogs, fromSiswa);
+      return { k, jumlahSuara };
+    });
+
+    const totalBasis = itemVotes.reduce((acc, curr) => acc + curr.jumlahSuara, 0);
+
+    return itemVotes.map(({ k, jumlahSuara }) => {
+      const persentase = totalBasis > 0 ? Math.round((jumlahSuara / totalBasis) * 100) : 0;
+      return {
+        kandidat: k,
+        jumlahSuara,
+        persentase
+      };
+    });
+  });
+
+  readonly totalSuaraWakilSiswi = computed<number>(() => {
+    return this.hasilWakilSiswi().reduce((sum, item) => sum + item.jumlahSuara, 0);
+  });
+
+  readonly hasilKandidat = computed<KandidatHasilSuara[]>(() => {
+    return [...this.hasilPaslonSiswa(), ...this.hasilWakilSiswi()];
+  });
+
+  getNamaKandidat(k: Kandidat): string {
+    if (k.jenisKandidat === 'wakil_siswi') {
+      return k.namaWakil || k.namaKetua || 'Calon Wakil Siswi';
+    }
+    if (k.namaKetua && k.namaWakil) {
+      return `${k.namaKetua} & ${k.namaWakil}`;
+    }
+    return k.namaKetua || k.namaWakil || 'Paslon OSIS';
+  }
 
   readonly rekapPerKelas = computed<RekapKelas[]>(() => {
     const siswaList = this._siswa();
@@ -510,7 +539,8 @@ export class VotingService {
       ...s,
       sudahMemilih: false,
       waktuMemilih: undefined,
-      kandidatDipilihId: undefined
+      kandidatDipilihId: undefined,
+      kandidatWakilDipilihId: undefined
     }));
     this._siswa.set(updatedSiswa);
     this.saveSiswaToStorage(updatedSiswa);
@@ -561,8 +591,12 @@ export class VotingService {
       let list: Kandidat[] = raw ? JSON.parse(raw) : INITIAL_KANDIDAT;
       list = list.map(k => {
         const isWakil = k.jenisKandidat === 'wakil_siswi' || (!k.namaKetua || k.namaKetua === '-' || k.namaKetua.trim() === '');
+        const namaWakil = isWakil ? (k.namaWakil || k.namaKetua || 'Alya Zahra Maharani') : k.namaWakil;
+        const fotoWakil = isWakil ? (k.fotoWakil || k.fotoKetua || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80') : k.fotoWakil;
         return {
           ...k,
+          namaWakil,
+          fotoWakil,
           jenisKandidat: isWakil ? 'wakil_siswi' : (k.jenisKandidat || 'paslon')
         };
       });

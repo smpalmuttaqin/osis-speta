@@ -966,17 +966,18 @@ export class PemungutanSuaraComponent {
     if (!siswa || !paslon || siswa.sudahMemilih) return;
 
     const unsurLabel = this.getLabelUnsurText(siswa);
+    const namaWakilSiswi = kandidat.namaWakil || kandidat.namaKetua || 'Calon Wakil Siswi';
     const htmlContent = `
       <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 4px; font-family: inherit;">
         <div style="font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.08em; text-transform: uppercase;">
           Konfirmasi Pilihan Calon Wakil Siswi
         </div>
         <div style="font-size: 24px; font-weight: 900; color: #0f172a; line-height: 1.1;">
-          ${kandidat.nomorUrut !== undefined ? 'Nomor ' + ((kandidat.nomorUrut < 10) ? '0' + kandidat.nomorUrut : kandidat.nomorUrut) + ' - ' : ''}${kandidat.namaWakil}
+          ${kandidat.nomorUrut !== undefined ? 'Nomor ' + ((kandidat.nomorUrut < 10) ? '0' + kandidat.nomorUrut : kandidat.nomorUrut) + ' - ' : ''}${namaWakilSiswi}
         </div>
 
         <div style="width: 140px; aspect-ratio: 3/4; border-radius: 12px; overflow: hidden; border: 2px solid #e2e8f0; background: #f8fafc; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08); margin: 6px 0;">
-          <img src="${kandidat.fotoWakil}" alt="${kandidat.namaWakil}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover;" />
+          <img src="${kandidat.fotoWakil}" alt="${namaWakilSiswi}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover;" />
         </div>
 
         <div style="font-size: 12px; color: #334155; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; width: 100%; text-align: center; border: 1px solid #e2e8f0; line-height: 1.5;">

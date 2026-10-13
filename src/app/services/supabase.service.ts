@@ -239,6 +239,19 @@ export class SupabaseService {
           namaKetuaRaw === '--' ||
           namaKetuaRaw.toLowerCase() === 'null';
 
+        const namaWakilRaw = item['nama_wakil'] !== undefined && item['nama_wakil'] !== null ? String(item['nama_wakil']).trim() : '';
+        const fotoWakilRaw = item['foto_wakil'] !== undefined && item['foto_wakil'] !== null ? String(item['foto_wakil']).trim() : '';
+        const fotoKetuaRaw = item['foto_ketua'] !== undefined && item['foto_ketua'] !== null ? String(item['foto_ketua']).trim() : '';
+
+        // Untuk wakil siswi: pastikan nama terisi baik jika disimpan di kolom nama_wakil maupun nama_ketua/nama
+        const finalNamaWakil = isWakilSiswi 
+          ? (namaWakilRaw || (namaKetuaRaw && namaKetuaRaw !== '-' ? namaKetuaRaw : '') || String(item['nama'] || '') || 'Calon Wakil Siswi')
+          : (namaWakilRaw || '');
+
+        const finalFotoWakil = isWakilSiswi
+          ? (fotoWakilRaw || (fotoKetuaRaw && fotoKetuaRaw !== '-' ? fotoKetuaRaw : '') || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80')
+          : (fotoWakilRaw || '');
+
         const jenisKandidat: 'paslon' | 'wakil_siswi' = isWakilSiswi ? 'wakil_siswi' : 'paslon';
 
         return {
@@ -246,9 +259,9 @@ export class SupabaseService {
           nomorUrut: item['nomor_urut'] !== null && item['nomor_urut'] !== undefined ? Number(item['nomor_urut']) : undefined,
           jenisKandidat,
           namaKetua: (!isWakilSiswi && namaKetuaRaw && namaKetuaRaw !== '-') ? namaKetuaRaw : undefined,
-          namaWakil: String(item['nama_wakil'] || ''),
-          fotoKetua: (!isWakilSiswi && item['foto_ketua'] && item['foto_ketua'] !== '-') ? String(item['foto_ketua']) : undefined,
-          fotoWakil: String(item['foto_wakil'] || '')
+          namaWakil: finalNamaWakil,
+          fotoKetua: (!isWakilSiswi && fotoKetuaRaw && fotoKetuaRaw !== '-') ? fotoKetuaRaw : undefined,
+          fotoWakil: finalFotoWakil
         };
       });
     } catch {

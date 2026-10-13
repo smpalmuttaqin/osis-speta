@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Kandidat } from '../../models/voting.models';
@@ -61,83 +61,169 @@ const SAMPLE_KANDIDAT_PHOTOS = [
         </div>
       </div>
 
-      <!-- Candidate Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        @for (k of votingService.kandidat(); track k.id) {
-          <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
-            
-            <div class="p-6">
-              <!-- Header with Nomor Urut / Badge & Actions -->
-              <div class="flex items-start justify-between border-b border-slate-100 pb-4 mb-4">
-                <div>
-                  @if (k.jenisKandidat === 'wakil_siswi') {
-                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#0062FF] border border-blue-100 mb-1">
-                      WAKIL SISWI
-                    </span>
-                    <span class="text-[11px] font-semibold text-slate-500 tracking-wider block">NOMOR URUT</span>
-                    <div class="text-3xl font-black text-slate-900 tracking-tight">
-                      {{ (k.nomorUrut !== undefined && k.nomorUrut < 10) ? '0' + k.nomorUrut : (k.nomorUrut ?? '01') }}
+      <!-- BAGIAN 1: DAFTAR PASANGAN CALON SISWA (PUTRA) -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-6 rounded-full bg-[#0062FF]"></span>
+            <div>
+              <h2 class="text-base font-bold text-slate-900 tracking-tight">
+                Pasangan Calon Siswa (Ketua & Wakil Putra)
+              </h2>
+              <p class="text-xs text-slate-400">
+                Kandidat pasangan calon Ketua OSIS dan Wakil Ketua OSIS Putra
+              </p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-[#0062FF] border border-blue-100">
+            {{ paslonList().length }} Paslon Terdaftar
+          </span>
+        </div>
+
+        @if (paslonList().length === 0) {
+          <div class="bg-white rounded-2xl p-6 text-center text-slate-400 border border-slate-100">
+            Belum ada pasangan calon siswa (putra) terdaftar.
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (k of paslonList(); track k.id) {
+              <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+                <div class="p-6">
+                  <!-- Header with Nomor Urut / Badge & Actions -->
+                  <div class="flex items-start justify-between border-b border-slate-100 pb-4 mb-4">
+                    <div>
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#0062FF] border border-blue-100 mb-1">
+                        PASLON SISWA
+                      </span>
+                      <span class="text-[11px] font-semibold text-slate-500 tracking-wider block">NOMOR URUT</span>
+                      <div class="text-3xl font-black text-slate-900 tracking-tight">
+                        {{ (k.nomorUrut !== undefined && k.nomorUrut < 10) ? '0' + k.nomorUrut : (k.nomorUrut ?? '01') }}
+                      </div>
                     </div>
-                  } @else {
-                    <span class="text-[11px] font-semibold text-slate-500 tracking-wider">NOMOR URUT</span>
-                    <div class="text-3xl font-black text-slate-900 tracking-tight">
-                      {{ (k.nomorUrut !== undefined && k.nomorUrut < 10) ? '0' + k.nomorUrut : k.nomorUrut }}
+
+                    <div class="flex items-center gap-1">
+                      <button 
+                        type="button"
+                        (click)="bukaModalEdit(k)"
+                        title="Edit Kandidat"
+                        class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                        <mat-icon class="text-[18px] w-[18px] h-[18px]">edit</mat-icon>
+                      </button>
+                      <button 
+                        type="button"
+                        (click)="hapusKandidat(k)"
+                        title="Hapus Kandidat"
+                        class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
+                        <mat-icon class="text-[18px] w-[18px] h-[18px]">delete</mat-icon>
+                      </button>
                     </div>
-                  }
+                  </div>
+
+                  <!-- Photos: Calon Ketua & Wakil -->
+                  <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div class="space-y-2">
+                      <div class="aspect-3/4 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
+                        <img 
+                          [src]="k.fotoKetua" 
+                          [alt]="k.namaKetua"
+                          referrerpolicy="no-referrer"
+                          class="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <span class="text-[10px] font-semibold text-slate-400 block">Calon Ketua</span>
+                        <span class="text-xs font-bold text-slate-900 leading-snug block line-clamp-2">{{ k.namaKetua }}</span>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2">
+                      <div class="aspect-3/4 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
+                        <img 
+                          [src]="k.fotoWakil" 
+                          [alt]="k.namaWakil"
+                          referrerpolicy="no-referrer"
+                          class="w-full h-full object-cover" />
+                      </div>
+                      <div>
+                        <span class="text-[10px] font-semibold text-slate-400 block">Calon Wakil</span>
+                        <span class="text-xs font-bold text-slate-900 leading-snug block line-clamp-2">{{ k.namaWakil }}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div class="flex items-center gap-1">
-                  <button 
-                    type="button"
-                    (click)="bukaModalEdit(k)"
-                    title="Edit Kandidat"
-                    class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
-                    <mat-icon class="text-[18px] w-[18px] h-[18px]">edit</mat-icon>
-                  </button>
-                  <button 
-                    type="button"
-                    (click)="hapusKandidat(k)"
-                    title="Hapus Kandidat"
-                    class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
-                    <mat-icon class="text-[18px] w-[18px] h-[18px]">delete</mat-icon>
-                  </button>
+                <!-- Card Bottom Stats -->
+                <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span class="text-slate-500">Perolehan Suara:</span>
+                  <span class="font-bold text-[#0062FF] tabular-nums">
+                    {{ getSuaraKandidat(k.id) }} Suara
+                  </span>
                 </div>
               </div>
+            }
+          </div>
+        }
+      </div>
 
-              <!-- Content based on type -->
-              @if (k.jenisKandidat === 'wakil_siswi') {
-                <div class="max-w-[180px] mx-auto text-center space-y-2 mb-4">
-                  <div class="aspect-3/4 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
-                    <img 
-                      [src]="k.fotoWakil" 
-                      [alt]="k.namaWakil"
-                      referrerpolicy="no-referrer"
-                      class="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <span class="text-[10px] font-semibold text-slate-400 block">Calon Wakil Siswi</span>
-                    <span class="text-xs font-bold text-slate-900 leading-snug block">{{ k.namaWakil }}</span>
-                  </div>
-                </div>
-              } @else {
-                <div class="grid grid-cols-2 gap-3 mb-5">
-                  <!-- Calon Ketua -->
-                  <div class="space-y-2">
-                    <div class="aspect-3/4 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
-                      <img 
-                        [src]="k.fotoKetua" 
-                        [alt]="k.namaKetua"
-                        referrerpolicy="no-referrer"
-                        class="w-full h-full object-cover" />
-                    </div>
+      <!-- BAGIAN 2: DAFTAR CALON WAKIL KETUA SISWI -->
+      <div class="space-y-4 pt-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-6 rounded-full bg-purple-600"></span>
+            <div>
+              <h2 class="text-base font-bold text-slate-900 tracking-tight">
+                Calon Wakil Ketua Siswi (Putri)
+              </h2>
+              <p class="text-xs text-slate-400">
+                Kandidat khusus Calon Wakil Ketua OSIS Siswi / Putri
+              </p>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+            {{ wakilSiswiList().length }} Calon Siswi Terdaftar
+          </span>
+        </div>
+
+        @if (wakilSiswiList().length === 0) {
+          <div class="bg-white rounded-2xl p-6 text-center text-slate-400 border border-slate-100">
+            Belum ada calon wakil ketua siswi terdaftar.
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (k of wakilSiswiList(); track k.id) {
+              <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden flex flex-col justify-between shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-shadow">
+                <div class="p-6">
+                  <!-- Header with Nomor Urut / Badge & Actions -->
+                  <div class="flex items-start justify-between border-b border-slate-100 pb-4 mb-4">
                     <div>
-                      <span class="text-[10px] font-semibold text-slate-400 block">Calon Ketua</span>
-                      <span class="text-xs font-bold text-slate-900 leading-snug block line-clamp-2">{{ k.namaKetua }}</span>
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100 mb-1">
+                        WAKIL SISWI
+                      </span>
+                      <span class="text-[11px] font-semibold text-slate-500 tracking-wider block">NOMOR URUT</span>
+                      <div class="text-3xl font-black text-slate-900 tracking-tight">
+                        {{ (k.nomorUrut !== undefined && k.nomorUrut < 10) ? '0' + k.nomorUrut : (k.nomorUrut ?? '01') }}
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button 
+                        type="button"
+                        (click)="bukaModalEdit(k)"
+                        title="Edit Kandidat"
+                        class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer">
+                        <mat-icon class="text-[18px] w-[18px] h-[18px]">edit</mat-icon>
+                      </button>
+                      <button 
+                        type="button"
+                        (click)="hapusKandidat(k)"
+                        title="Hapus Kandidat"
+                        class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
+                        <mat-icon class="text-[18px] w-[18px] h-[18px]">delete</mat-icon>
+                      </button>
                     </div>
                   </div>
 
-                  <!-- Calon Wakil -->
-                  <div class="space-y-2">
+                  <!-- Photo & Name -->
+                  <div class="max-w-[180px] mx-auto text-center space-y-2 mb-4">
                     <div class="aspect-3/4 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
                       <img 
                         [src]="k.fotoWakil" 
@@ -146,22 +232,25 @@ const SAMPLE_KANDIDAT_PHOTOS = [
                         class="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <span class="text-[10px] font-semibold text-slate-400 block">Calon Wakil</span>
-                      <span class="text-xs font-bold text-slate-900 leading-snug block line-clamp-2">{{ k.namaWakil }}</span>
+                      <span class="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full inline-block mb-1">
+                        Calon Wakil Siswi
+                      </span>
+                      <span class="text-sm font-bold text-slate-900 leading-snug block">
+                        {{ k.namaWakil || k.namaKetua || 'Calon Wakil Siswi' }}
+                      </span>
                     </div>
                   </div>
                 </div>
-              }
-            </div>
 
-            <!-- Card Bottom Stats -->
-            <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span class="text-slate-500">Perolehan Suara:</span>
-              <span class="font-bold text-slate-900 tabular-nums">
-                {{ getSuaraKandidat(k.id) }} Suara
-              </span>
-            </div>
-
+                <!-- Card Bottom Stats -->
+                <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span class="text-slate-500">Perolehan Suara:</span>
+                  <span class="font-bold text-purple-700 tabular-nums">
+                    {{ getSuaraKandidat(k.id) }} Suara
+                  </span>
+                </div>
+              </div>
+            }
           </div>
         }
       </div>
@@ -402,12 +491,26 @@ export class KandidatComponent {
     fotoWakil: new FormControl<string>('', [Validators.required]),
   });
 
+  readonly paslonList = computed(() => {
+    return this.votingService.kandidat()
+      .filter(k => k.jenisKandidat !== 'wakil_siswi')
+      .slice()
+      .sort((a, b) => (a.nomorUrut || 999) - (b.nomorUrut || 999));
+  });
+
+  readonly wakilSiswiList = computed(() => {
+    return this.votingService.kandidat()
+      .filter(k => k.jenisKandidat === 'wakil_siswi')
+      .slice()
+      .sort((a, b) => (a.nomorUrut || 999) - (b.nomorUrut || 999));
+  });
+
   getSuaraKandidat(kandidatId: string): number {
     const logs = this.votingService.suaraLog();
-    if (logs.length > 0) {
-      return logs.filter(l => l.kandidatId === kandidatId).length;
-    }
-    return this.votingService.siswa().filter(s => s.kandidatDipilihId === kandidatId || s.kandidatWakilDipilihId === kandidatId).length;
+    const siswa = this.votingService.siswa();
+    const logCount = logs.filter(l => l.kandidatId === kandidatId).length;
+    const siswaCount = siswa.filter(s => s.kandidatDipilihId === kandidatId || s.kandidatWakilDipilihId === kandidatId).length;
+    return Math.max(logCount, siswaCount);
   }
 
   pilihKategori(jenis: 'paslon' | 'wakil_siswi'): void {
