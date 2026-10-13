@@ -30,6 +30,7 @@
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.26.25",
     "tslib": "^2.3.0",
+    "ws": "^8.22.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -39,6 +40,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
+    "@types/ws": "^8.18.2",
     "angular-eslint": "21.1.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",

@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Kandidat, Siswa, SuaraLog } from '../models/voting.models';
 import { SupabaseService } from './supabase.service';
+import { RealtimeService, RealtimeVotePayload } from './realtime.service';
 
 const STORAGE_KEY_SISWA = 'evoting_siswa_v1';
 const STORAGE_KEY_KANDIDAT = 'evoting_kandidat_v1';
@@ -66,6 +67,7 @@ export interface RekapKelas {
 })
 export class VotingService {
   private readonly supabaseService = inject(SupabaseService);
+  readonly realtimeService = inject(RealtimeService);
 
   private readonly _siswa = signal<Siswa[]>(this.loadSiswaFromStorage());
   private readonly _kandidat = signal<Kandidat[]>(this.loadKandidatFromStorage());
@@ -73,6 +75,110 @@ export class VotingService {
 
   constructor() {
     this.syncFromSupabase();
+
+    // Dengarkan event realtime dari seluruh perangkat
+    this.realtimeService.onVote((payload) => {
+      this.handleIncomingRealtimeVote(payload);
+    });
+
+    this.realtimeService.onReset(() => {
+      this.handleIncomingRealtimeReset();
+    });
+
+    this.realtimeService.onSync(() => {
+      this.syncFromSupabase();
+    });
+  }
+
+  private handleIncomingRealtimeVote(payload: RealtimeVotePayload): void {
+    if (!payload || !payload.siswaId) return;
+
+    // Cegah duplikasi log jika sudah pernah tercatat
+    const existingLog = this._suaraLog().some(l => 
+      (payload.logs && payload.logs.some(pl => pl.id === l.id)) ||
+      (l.siswaId === payload.siswaId && l.timestamp === payload.timestamp)
+    );
+
+    if (existingLog) {
+      return;
+    }
+
+    // 1. Update status pemilih
+    const currentSiswa = this._siswa();
+    let siswaFound = false;
+    const updatedSiswa = currentSiswa.map(s => {
+      if (s.id === payload.siswaId) {
+        siswaFound = true;
+        return {
+          ...s,
+          sudahMemilih: true,
+          waktuMemilih: payload.timestamp,
+          kandidatDipilihId: payload.paslonId,
+          kandidatWakilDipilihId: payload.wakilSiswiId
+        };
+      }
+      return s;
+    });
+
+    if (siswaFound) {
+      this._siswa.set(updatedSiswa);
+      this.saveSiswaToStorage(updatedSiswa);
+    }
+
+    // 2. Tambahkan log suara secara instan agar grafik dan statistik langsung naik
+    if (payload.logs && payload.logs.length > 0) {
+      const existingIds = new Set(this._suaraLog().map(l => l.id));
+      const newItems = payload.logs.filter(l => !existingIds.has(l.id));
+      if (newItems.length > 0) {
+        const merged = [...newItems, ...this._suaraLog()];
+        this._suaraLog.set(merged);
+        this.saveLogsToStorage(merged);
+      }
+    } else {
+      const paslonKand = this._kandidat().find(k => k.id === payload.paslonId);
+      const created: SuaraLog[] = [{
+        id: 'rt-log-' + Date.now().toString(36) + '-1',
+        siswaId: payload.siswaId,
+        siswaNama: payload.siswaNama || 'Pemilih',
+        kelas: payload.kelas || '',
+        kandidatId: payload.paslonId,
+        nomorUrut: paslonKand?.nomorUrut || 1,
+        timestamp: payload.timestamp
+      }];
+      if (payload.wakilSiswiId) {
+        const wakilKand = this._kandidat().find(k => k.id === payload.wakilSiswiId);
+        created.push({
+          id: 'rt-log-' + Date.now().toString(36) + '-2',
+          siswaId: payload.siswaId,
+          siswaNama: payload.siswaNama || 'Pemilih',
+          kelas: payload.kelas || '',
+          kandidatId: payload.wakilSiswiId,
+          nomorUrut: wakilKand?.nomorUrut || 1,
+          timestamp: payload.timestamp
+        });
+      }
+      const merged = [...created, ...this._suaraLog()];
+      this._suaraLog.set(merged);
+      this.saveLogsToStorage(merged);
+    }
+
+    // Ambil keselarasan database secara hening
+    this.syncFromSupabase();
+  }
+
+  private handleIncomingRealtimeReset(): void {
+    const updatedSiswa = this._siswa().map(s => ({
+      ...s,
+      sudahMemilih: false,
+      waktuMemilih: undefined,
+      kandidatDipilihId: undefined,
+      kandidatWakilDipilihId: undefined
+    }));
+    this._siswa.set(updatedSiswa);
+    this.saveSiswaToStorage(updatedSiswa);
+
+    this._suaraLog.set([]);
+    this.saveLogsToStorage([]);
   }
 
   async syncFromSupabase(): Promise<void> {
@@ -531,6 +637,17 @@ export class VotingService {
       });
     }
 
+    // 3. Siarkan ke seluruh perangkat secara realtime (Supabase channel, WebSockets, SSE & BroadcastChannel)
+    this.realtimeService.broadcastVote({
+      siswaId: siswaItem.id,
+      paslonId: paslonItem.id,
+      wakilSiswiId: wakilSiswiItem?.id,
+      timestamp: formattedDate,
+      siswaNama: siswaItem.namaLengkap,
+      kelas: siswaItem.kelas,
+      logs: newLogs
+    });
+
     return true;
   }
 
@@ -547,6 +664,9 @@ export class VotingService {
 
     this._suaraLog.set([]);
     this.saveLogsToStorage([]);
+
+    // Siarkan reset ke seluruh perangkat secara realtime
+    this.realtimeService.broadcastReset();
 
     // Reset status memilih dan log di database Supabase
     this.supabaseService.resetSemuaSuaraDiDatabase().catch(err => {

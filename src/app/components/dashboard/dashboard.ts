@@ -1,15 +1,71 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { SuaraLog } from '../../models/voting.models';
 import { VotingService } from '../../services/voting.service';
+import { RealtimeService } from '../../services/realtime.service';
 
 @Component({
   selector: 'app-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatIconModule],
   template: `
-    <div class="p-4 sm:p-6 lg:p-8 space-y-6">
-      
+    <div class="p-4 sm:p-6 lg:p-8 space-y-6 relative">
+
+      <!-- FLOATING TOAST: SUARA BARU MASUK SECARA REALTIME -->
+      @if (recentVoteToast(); as toast) {
+        <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-2xl border border-emerald-500/40 transition-all duration-300">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <mat-icon class="text-[20px] w-5 h-5">how_to_vote</mat-icon>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>Suara Masuk Realtime!</span>
+            </div>
+            <div class="text-[11px] text-slate-200 mt-0.5">
+              <span class="font-semibold text-white">{{ toast.siswaNama }}</span> ({{ toast.kelas }}) telah menggunakan hak suara
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- REALTIME LIVE BAR: STATUS & SINKRONISASI SEMUA PERANGKAT -->
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-4 sm:p-5 border border-slate-700/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div class="relative flex items-center justify-center w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 shrink-0">
+            <span class="absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-sm font-bold text-white tracking-wide">Live Count Realtime Aktif</h2>
+              <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Multi-Perangkat Terhubung
+              </span>
+            </div>
+            <p class="text-xs text-slate-300 mt-0.5">
+              Ketika bilik suara di perangkat lain mencoblos, perolehan suara dan grafik langsung diperbarui secara otomatis tanpa refresh.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-700/50 pt-3 md:pt-0">
+          <div class="text-left md:text-right">
+            <div class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Status Update</div>
+            <div class="text-xs font-semibold text-emerald-300">{{ realtimeService.lastActiveTime() }}</div>
+          </div>
+          <button 
+            type="button"
+            (click)="manualSync()"
+            [disabled]="isRefreshing()"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 active:bg-white/25 text-white transition cursor-pointer disabled:opacity-50 border border-white/10">
+            <mat-icon class="text-[16px] w-4 h-4" [class.animate-spin]="isRefreshing()">sync</mat-icon>
+            <span>{{ isRefreshing() ? 'Sinkron...' : 'Sinkronkan' }}</span>
+          </button>
+        </div>
+      </div>
+
       <!-- STAT CARDS: 2 ROWS OF 4 CARDS -->
       <div class="space-y-4">
         
@@ -725,8 +781,55 @@ import { VotingService } from '../../services/voting.service';
 })
 export class DashboardComponent {
   readonly votingService = inject(VotingService);
+  readonly realtimeService = inject(RealtimeService);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeCategory = signal<'paslon' | 'wakil_siswi'>('paslon');
+  readonly isRefreshing = signal<boolean>(false);
+  readonly recentVoteToast = signal<{ siswaNama: string; kelas: string } | null>(null);
+
+  private toastTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    if (isPlatformBrowser(this.platformId)) {
+      // 1. Dengar siaran suara masuk realtime untuk update UI dan toast notifikasi
+      const unbindVote = this.realtimeService.onVote((payload) => {
+        if (payload && payload.siswaNama) {
+          this.recentVoteToast.set({
+            siswaNama: payload.siswaNama,
+            kelas: payload.kelas || ''
+          });
+
+          if (this.toastTimeout) {
+            clearTimeout(this.toastTimeout);
+          }
+          this.toastTimeout = setTimeout(() => {
+            this.recentVoteToast.set(null);
+          }, 4500);
+        }
+      });
+
+      // 2. Heartbeat interval untuk background sync berkala memastikan data selalu 100% konsisten
+      const heartbeatInterval = setInterval(() => {
+        this.votingService.syncFromSupabase();
+      }, 3500);
+
+      this.destroyRef.onDestroy(() => {
+        unbindVote();
+        clearInterval(heartbeatInterval);
+        if (this.toastTimeout) {
+          clearTimeout(this.toastTimeout);
+        }
+      });
+    }
+  }
+
+  async manualSync(): Promise<void> {
+    this.isRefreshing.set(true);
+    await this.votingService.syncFromSupabase();
+    this.isRefreshing.set(false);
+  }
 
   readonly chartPoints = computed(() => {
     const isPaslon = this.activeCategory() === 'paslon';
