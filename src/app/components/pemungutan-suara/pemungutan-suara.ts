@@ -120,16 +120,9 @@ import { VotingService, dapatMemilihKandidat, getUnsurPemilih } from '../../serv
               
               <!-- Left: Foto & Identitas -->
               <div class="flex items-center gap-4 sm:gap-5">
-                <!-- Pas Foto Pemilih -->
-                <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-100 border-2 border-[#0062FF]/20 shadow-xs shrink-0">
-                  <img 
-                    [src]="activeSiswa()!.pasFoto" 
-                    [alt]="activeSiswa()!.namaLengkap"
-                    referrerpolicy="no-referrer"
-                    class="w-full h-full object-cover" />
-                  <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 py-0.5 text-center">
-                    <span class="text-[9px] font-bold text-white tracking-widest uppercase">PEMILIH</span>
-                  </div>
+                <!-- Avatar Pemilih (Tanpa Foto) -->
+                <div class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#EAF2FF] text-[#0062FF] border-2 border-[#0062FF]/20 shadow-xs shrink-0 flex items-center justify-center">
+                  <mat-icon class="text-[36px] w-9 h-9">account_circle</mat-icon>
                 </div>
 
                 <!-- Bio Pemilih -->
@@ -575,12 +568,8 @@ import { VotingService, dapatMemilihKandidat, getUnsurPemilih } from '../../serv
               <!-- Pratinjau Pemilih Terverifikasi -->
               @if (siswaTerverifikasi()) {
                 <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3.5 animate-in fade-in duration-150">
-                  <div class="w-12 h-12 rounded-xl overflow-hidden bg-white border border-emerald-300 shadow-2xs shrink-0">
-                    <img 
-                      [src]="siswaTerverifikasi()!.pasFoto" 
-                      [alt]="siswaTerverifikasi()!.namaLengkap"
-                      referrerpolicy="no-referrer"
-                      class="w-full h-full object-cover" />
+                  <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-300 shadow-2xs shrink-0">
+                    <mat-icon class="text-[24px] w-6 h-6">account_circle</mat-icon>
                   </div>
 
                   <div class="flex-1 min-w-0">

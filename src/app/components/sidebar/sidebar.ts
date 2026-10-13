@@ -20,13 +20,11 @@ import { AuthService } from '../../services/auth.service';
       </button>
     }
 
-    <!-- Sidebar Container (Bisa dibuka dan ditutup penuh di Desktop & Mobile) -->
+    <!-- Sidebar Container (Tetap di samping saat di-scroll) -->
     <aside 
-      class="fixed md:absolute inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 flex flex-col justify-between transition-all duration-300 ease-in-out shadow-xs"
-      [class.translate-x-0]="uiService.isMobileSidebarOpen()"
-      [class.-translate-x-full]="!uiService.isMobileSidebarOpen()"
-      [class.md:translate-x-0]="uiService.isSidebarOpen()"
-      [class.md:-translate-x-full]="!uiService.isSidebarOpen()">
+      class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-100 flex flex-col justify-between transition-transform duration-300 ease-in-out shadow-xs"
+      [class.translate-x-0]="uiService.isMobileSidebarOpen() || uiService.isSidebarOpen()"
+      [class.-translate-x-full]="!(uiService.isMobileSidebarOpen() || uiService.isSidebarOpen())">
       
       <!-- Top Brand & Close Toggle Section -->
       <div>
