@@ -142,7 +142,7 @@ interface ParsedSiswaRow {
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th class="px-5 py-3 w-16">Pas Foto</th>
+                <th class="px-4 py-3 w-12 text-slate-400 font-medium">No</th>
                 <th class="px-5 py-3">Nama Lengkap</th>
                 <th class="px-5 py-3">Unsur</th>
                 <th class="px-5 py-3">L/P</th>
@@ -158,22 +158,16 @@ interface ParsedSiswaRow {
                   <td colspan="8" class="px-5 py-12 text-center text-slate-400">
                     <div class="space-y-2">
                       <mat-icon class="text-[32px] w-8 h-8 mx-auto text-slate-300">person_search</mat-icon>
-                      <p class="font-medium text-slate-600">Tidak ada data siswa</p>
-                      <p class="text-[11px] text-slate-400">Gunakan tombol "Tambah Siswa" atau "Import Excel" untuk memasukkan data siswa.</p>
+                      <p class="font-medium text-slate-600">Tidak ada data pemilih</p>
+                      <p class="text-[11px] text-slate-400">Gunakan tombol "Tambah Pemilih" atau "Import Excel" untuk memasukkan data pemilih.</p>
                     </div>
                   </td>
                 </tr>
               } @else {
-                @for (siswa of filteredSiswa(); track siswa.id) {
+                @for (siswa of filteredSiswa(); track siswa.id; let idx = $index) {
                   <tr class="hover:bg-slate-50/75 transition-colors">
-                    <td class="px-5 py-3">
-                      <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
-                        <img 
-                          [src]="siswa.pasFoto" 
-                          [alt]="siswa.namaLengkap"
-                          referrerpolicy="no-referrer"
-                          class="w-full h-full object-cover" />
-                      </div>
+                    <td class="px-4 py-3 text-slate-400 tabular-nums">
+                      {{ idx + 1 }}
                     </td>
                     <td class="px-5 py-3 font-semibold text-slate-900">
                       {{ siswa.namaLengkap }}
